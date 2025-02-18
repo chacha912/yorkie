@@ -120,14 +120,10 @@ jobs:
         id: bench
         run: |
           make bench
-          content=$(cat output.txt)
-          content="${content//'%'/'%25'}"
-          content="${content//$'\n'/'%0A'}"
-          content="${content//$'\r'/'%0D'}"
+          content=$(cat output.txt | jq -R -s .)
           echo "BENCH_RESULT=$content" >> $GITHUB_OUTPUT
 
       - name: Set up cache
-        if: github.ref == 'refs/heads/main'
         uses: actions/cache@v3
         with:
           path: ./cache
@@ -137,10 +133,7 @@ jobs:
         id: prev-bench
         run: |
           if [ -f "./cache/bench_result.txt" ]; then
-            content=$(cat ./cache/bench_result.txt)
-            content="${content//'%'/'%25'}"
-            content="${content//$'\n'/'%0A'}"
-            content="${content//$'\r'/'%0D'}"
+            content=$(cat ./cache/bench_result.txt | jq -R -s .)
             echo "PREV_BENCH_RESULT=$content" >> $GITHUB_OUTPUT
           else
             echo "PREV_BENCH_RESULT=No previous benchmark data" >> $GITHUB_OUTPUT
@@ -152,10 +145,10 @@ jobs:
           -H "Content-Type: application/json" \
           -d '{
             "repo": "${{ github.repository }}",
-            "pr_number": "${{ github.event.pull_request.number }}",
+            "pr_number": ${{ github.event.pull_request.number }},
             "commit_id": "${{ github.sha }}",
-            "prev_bench_result": "${{ steps.prev-bench.outputs.PREV_BENCH_RESULT }}",
-            "bench_result": "${{ steps.bench.outputs.BENCH_RESULT }}"
+            "prev_bench_result": ${{ steps.prev-bench.outputs.PREV_BENCH_RESULT }},
+            "bench_result": ${{ steps.bench.outputs.BENCH_RESULT }}
           }' || echo "CURL_ERROR")
 
           if [ "$response" = "CURL_ERROR" ]; then
