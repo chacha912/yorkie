@@ -42,6 +42,7 @@ jobs:
               - 'client/**'
               - 'admin/**'
               - 'api/converter/**'
+              - '.github/workflows/ci.yml'
 
             complex-test:
               - 'test/complex/**'
@@ -118,23 +119,18 @@ jobs:
       - name: Bench
         run: make bench
 
-      - name: Download previous benchmark data
+      - name: Copy benchmark result to cache
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p ./cache
+          cp output.txt ./cache/bench_result.txt
+
+      - name: Store benchmark cache
+        if: github.ref == 'refs/heads/main'
         uses: actions/cache@v3
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
-
-      - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        with:
-          name: Go Benchmark
-          tool: "go"
-          output-file-path: output.txt
-          external-data-json-path: ./cache/benchmark-data.json
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-always: true
 
   complex-test:
     name: complex-test
