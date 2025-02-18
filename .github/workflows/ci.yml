@@ -117,20 +117,57 @@ jobs:
         run: docker compose -f build/docker/docker-compose.yml up --build -d
 
       - name: Bench
-        run: make bench
-
-      - name: Copy benchmark result to cache
-        if: github.ref == 'refs/heads/main'
+        id: bench
         run: |
-          mkdir -p ./cache
-          cp output.txt ./cache/bench_result.txt
+          make bench
+          content=$(cat output.txt)
+          content="${content//'%'/'%25'}"
+          content="${content//$'\n'/'%0A'}"
+          content="${content//$'\r'/'%0D'}"
+          echo "BENCH_RESULT=$content" >> $GITHUB_OUTPUT
 
-      - name: Store benchmark cache
+      - name: Set up cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache@v3
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
+
+      - name: Read previous benchmark result
+        id: prev-bench
+        run: |
+          if [ -f "./cache/bench_result.txt" ]; then
+            content=$(cat ./cache/bench_result.txt)
+            content="${content//'%'/'%25'}"
+            content="${content//$'\n'/'%0A'}"
+            content="${content//$'\r'/'%0D'}"
+            echo "PREV_BENCH_RESULT=$content" >> $GITHUB_OUTPUT
+          else
+            echo "PREV_BENCH_RESULT=No previous benchmark data" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger n8n webhook
+        run: |
+          response=$(curl -f -X POST https://doongdoong.app.n8n.cloud/webhook-test/yorkie \
+          -H "Content-Type: application/json" \
+          -d '{
+            "repo": "${{ github.repository }}",
+            "pr_number": "${{ github.event.pull_request.number }}",
+            "commit_id": "${{ github.sha }}",
+            "prev_bench_result": "${{ steps.prev-bench.outputs.PREV_BENCH_RESULT }}",
+            "bench_result": "${{ steps.bench.outputs.BENCH_RESULT }}"
+          }' || echo "CURL_ERROR")
+
+          if [ "$response" = "CURL_ERROR" ]; then
+            echo "::error::Failed to trigger n8n webhook"
+            exit 1
+          fi
+
+      - name: Store benchmark result to cache
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p ./cache
+          cp output.txt ./cache/bench_result.txt
 
   complex-test:
     name: complex-test
