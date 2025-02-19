@@ -12,6 +12,17 @@ on:
       - "**/*.md"
       - "**/*.txt"
       - "**/.gitignore"
+  workflow_dispatch:
+    inputs:
+      job_to_run:
+        description: "Choose the job to run"
+        required: true
+        type: choice
+        options:
+          - "all"
+          - "build"
+          - "bench"
+          - "complex-test"
 
 env:
   GO_VERSION: "1.23"
@@ -130,23 +141,33 @@ jobs:
           key: ${{ runner.os }}-benchmark
 
       - name: Read previous benchmark result
+        if: github.event_name == 'pull_request'
         id: prev-bench
         run: |
           if [ -f "./cache/bench_result.txt" ]; then
             content=$(cat ./cache/bench_result.txt | jq -R -s .)
             echo "PREV_BENCH_RESULT=$content" >> $GITHUB_OUTPUT
+
+            if [ -f "./cache/commit_hash.txt" ]; then
+              prev_commit=$(cat ./cache/commit_hash.txt)
+              echo "PREV_COMMIT=$prev_commit" >> $GITHUB_OUTPUT
+            else
+              echo "PREV_COMMIT=null" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "PREV_BENCH_RESULT=No previous benchmark data" >> $GITHUB_OUTPUT
+            echo "PREV_BENCH_RESULT=null" >> $GITHUB_OUTPUT
           fi
 
       - name: Trigger n8n webhook
+        if: github.event_name == 'pull_request'
         run: |
-          response=$(curl -f -X POST https://doongdoong.app.n8n.cloud/webhook-test/yorkie \
+          response=$(curl -f -X POST ${{ secrets.N8N_WEBHOOK_URL }} \
           -H "Content-Type: application/json" \
           -d '{
             "repo": "${{ github.repository }}",
-            "pr_number": ${{ github.event.pull_request.number }},
+            "pr_number": "${{ github.event.pull_request.number }}",
             "commit_id": "${{ github.sha }}",
+            "prev_commit_id": "${{ steps.prev-bench.outputs.PREV_COMMIT }}",
             "prev_bench_result": ${{ steps.prev-bench.outputs.PREV_BENCH_RESULT }},
             "bench_result": ${{ steps.bench.outputs.BENCH_RESULT }}
           }' || echo "CURL_ERROR")
@@ -161,6 +182,7 @@ jobs:
         run: |
           mkdir -p ./cache
           cp output.txt ./cache/bench_result.txt
+          echo "${{ github.sha }}" > ./cache/commit_hash.txt
 
   complex-test:
     name: complex-test
