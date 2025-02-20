@@ -12,17 +12,6 @@ on:
       - "**/*.md"
       - "**/*.txt"
       - "**/.gitignore"
-  workflow_dispatch:
-    inputs:
-      job_to_run:
-        description: "Choose the job to run"
-        required: true
-        type: choice
-        options:
-          - "all"
-          - "build"
-          - "bench"
-          - "complex-test"
 
 env:
   GO_VERSION: "1.23"
@@ -53,7 +42,6 @@ jobs:
               - 'client/**'
               - 'admin/**'
               - 'api/converter/**'
-              - '.github/workflows/ci.yml'
 
             complex-test:
               - 'test/complex/**'
@@ -128,7 +116,11 @@ jobs:
         run: docker compose -f build/docker/docker-compose.yml up --build -d
 
       - name: Bench
-        run: make bench
+        id: curr-bench
+        run: |
+          make bench
+          content=$(cat output.txt | jq -R -s .)
+          echo "BENCH_RESULT=$content" >> $GITHUB_OUTPUT
 
       - name: Set up cache
         uses: actions/cache@v3
@@ -165,7 +157,7 @@ jobs:
             "pr_number": "${{ github.event.pull_request.number }}",
             "commit_id": "${{ github.sha }}",
             "prev_commit_id": "${{ steps.prev-bench.outputs.PREV_COMMIT }}",
-            "bench_result": curr_bench,
+            "bench_result": ${{ steps.curr-bench.outputs.BENCH_RESULT }},
             "prev_bench_result": ${{ steps.prev-bench.outputs.PREV_BENCH_RESULT }}
           }' || echo "CURL_ERROR")
 
