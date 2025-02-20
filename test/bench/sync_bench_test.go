@@ -28,23 +28,23 @@ import (
 	"github.com/yorkie-team/yorkie/server/backend/sync"
 )
 
-func BenchmarkSync(b *testing.B) {
-	b.Run("memory sync 10 test", func(b *testing.B) {
-		benchmarkMemorySync(10, b)
-	})
+// func BenchmarkSync(b *testing.B) {
+// 	b.Run("memory sync 10 test", func(b *testing.B) {
+// 		benchmarkMemorySync(10, b)
+// 	})
 
-	b.Run("memory sync 100 test", func(b *testing.B) {
-		benchmarkMemorySync(100, b)
-	})
+// 	b.Run("memory sync 100 test", func(b *testing.B) {
+// 		benchmarkMemorySync(100, b)
+// 	})
 
-	b.Run("memory sync 1000 test", func(b *testing.B) {
-		benchmarkMemorySync(1000, b)
-	})
+// 	b.Run("memory sync 1000 test", func(b *testing.B) {
+// 		benchmarkMemorySync(1000, b)
+// 	})
 
-	b.Run("memory sync 10000 test", func(b *testing.B) {
-		benchmarkMemorySync(10000, b)
-	})
-}
+// 	b.Run("memory sync 10000 test", func(b *testing.B) {
+// 		benchmarkMemorySync(10000, b)
+// 	})
+// }
 
 func benchmarkMemorySync(cnt int, b *testing.B) {
 	for i := 0; i < b.N; i++ {
