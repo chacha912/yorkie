@@ -19,7 +19,6 @@ on:
         required: true
         type: choice
         options:
-          - "all"
           - "build"
           - "bench"
           - "complex-test"
@@ -53,7 +52,6 @@ jobs:
               - 'client/**'
               - 'admin/**'
               - 'api/converter/**'
-              - '.github/workflows/ci.yml'
 
             complex-test:
               - 'test/complex/**'
@@ -66,7 +64,8 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: ci-target-check
-    if: ${{ needs.ci-target-check.outputs.build == 'true' }}
+    if: ${{ needs.ci-target-check.outputs.build == 'true' }} ||
+      ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.job_to_run == 'build' }}
 
     steps:
       - name: Set up Go ${{ env.GO_VERSION }}
@@ -113,7 +112,8 @@ jobs:
     permissions: write-all
 
     needs: ci-target-check
-    if: ${{ needs.ci-target-check.outputs.bench == 'true' }}
+    if: ${{ needs.ci-target-check.outputs.bench == 'true' }} ||
+      ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.job_to_run == 'bench' }}
 
     steps:
       - name: Set up Go ${{ env.GO_VERSION }}
@@ -189,7 +189,8 @@ jobs:
     runs-on: ubuntu-latest
 
     needs: ci-target-check
-    if: ${{ needs.ci-target-check.outputs.complex-test == 'true' }}
+    if: ${{ needs.ci-target-check.outputs.complex-test == 'true' }} ||
+      ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.job_to_run == 'complex-test' }}
 
     steps:
       - name: Set up Go ${{ env.GO_VERSION }}
